@@ -7,11 +7,9 @@
 using namespace std;
 
 enum Signals { Letter, Digit, ComparisonSing, AssignmentSing, ArithmeticSing, SeparatorSing, Other }; // сигналы
-// Состояния автомата
-enum States { Start, Id_Kw, Const, Comparison, ComplexComparison, Assignment, Arithmetic, Separator, Exception };
-// Типы лексем (ключевое слово, оператор сравнения, арифметический оператор, идентификатор, константа)
-enum LexemeType { kw, id, vl, co, eq, ao, wl };
-static const char* LexemeTypeStrings[7] = { "[kw]", "[id]", "[vl]", "[co]", "[eq]", "[ao]", "[wl]"};
+enum States { Start, Id_Kw, Const, Comparison, ComplexComparison, Assignment, Arithmetic, Separator, Exception }; // Состояния автомата
+enum LexemeType { kw, id, vl, co, eq, ao, wl }; // Типы лексем
+static const char* LexemeTypeStrings[7] = { "[kw]", "[id]", "[vl]", "[co]", "[eq]", "[ao]", "[wl]"}; // текст типов лексем
 static const char* KeyWords[3] = { "while", "do", "loop" }; // Ключевые слова
 
 void createTable(States table [7][9]) // матрица состояний
@@ -23,7 +21,7 @@ void createTable(States table [7][9]) // матрица состояний
 	table[Letter][Arithmetic] = Id_Kw;
 	table[Letter][Comparison] = Id_Kw;
 	table[Letter][ComplexComparison] = Id_Kw;
-	table[Letter][Exception] = Id_Kw;
+	table[Letter][Exception] = Exception;
 	table[Letter][Separator] = Id_Kw;
 
 	table[Digit][Start] = Const;
@@ -33,7 +31,7 @@ void createTable(States table [7][9]) // матрица состояний
 	table[Digit][Arithmetic] = Const;
 	table[Digit][Comparison] = Const;
 	table[Digit][ComplexComparison] = Const;
-	table[Digit][Exception] = Const;
+	table[Digit][Exception] = Exception;
 	table[Digit][Separator] = Const;
 
 	table[ComparisonSing][Start] = Comparison;
@@ -87,11 +85,10 @@ void createTable(States table [7][9]) // матрица состояний
 	table[Other][Separator] = Exception;
 }
 
-// Вектор лексем
-struct Lexeme 
+struct Lexeme // Контейнер лексемы
 {
-	LexemeType type;
-	char* text;
+	LexemeType type; // тип лексемы
+	char* text; // текст лексемы
 };
 
 ostream& operator << (ostream& os, const Lexeme& lexeme) // перегрузка вывода
@@ -130,27 +127,22 @@ Signals check(char c) // функция проверки элемента, во�
 	return Other;
 }
 
-void lexemeAnalysis(const char* lines, vector<Lexeme>& result, States table [7][9], vector<char*>& identificators) // Функция лексического анализа
+void lexemeAnalysis(const char* lines, vector<Lexeme>& result, States table [7][9]) // Функция лексического анализа
 {
-	long unsigned int size = strlen(lines);
+	long unsigned int size = strlen(lines); // вычисление размера строки
 	long unsigned int position = 0;	// текущая позиция в строке
-	//const char* str = text, * lexstart;
 	States state = Start, prevState;
 	Lexeme lexeme;
 	int start_lex_pos = 0; // позиция начала лексемы
-	//int add;
 
 	do
 	{
 		char current_char = lines[position]; // текущий символ
 		prevState = state;
-		//add = true;
 
 		state = table[check(current_char)][state]; // изменяем состояние автомата
 
-		// Добавление лексемы в список
-		//if (add) result.push_back()
-		// Сохранение начала лексемы если состояние изменилось
+		// Запись лексемы если состояние изменилось
 		if ((state != prevState) && (state == Id_Kw || state == Const || state == Comparison || state == Assignment || state == Arithmetic || state == Separator) && position && prevState != Separator)
 		{			
 			int length = position - start_lex_pos;
@@ -158,37 +150,31 @@ void lexemeAnalysis(const char* lines, vector<Lexeme>& result, States table [7][
 			strncpy(&lexeme.text[0], &lines[0] + start_lex_pos, length); // Вычленение подстроки и запись в лексему			
 			lexeme.text[length] = '\0'; // Постановка финализирующего 0
 
-			if (prevState == Id_Kw)
+			if (prevState == Id_Kw) // определение типа лексемы
 			{
 				lexeme.type = id;
-				/*long unsigned int i = 0;
-				while (KeyWords[i] != NULL)
-				{
-					if (*lexeme.text == *KeyWords[i])
-					{
-						lexeme.type = kw;
-						break;
-					}
-					i++;
-				}*/
+								
 				for (long unsigned int i = 0; KeyWords[i] != NULL; i++)
 				{
-					if (!strcmp(lexeme.text, KeyWords[i]))
-					{
+					if (!strcmp(lexeme.text, KeyWords[i])) // сравнение для проверки является лексема ключевым словом, или идентификатором
 						lexeme.type = kw;
-					}
 				}
 
-				if (lexeme.type == id)
-					identificators.push_back(lexeme.text);
+				if (lexeme.type == id && strlen(lexeme.text) > 5) // проверка идентификатора на соответсвие 
+				{
+					lexeme.type = wl;
+				}				
 			}
 			else if (prevState == Const)
 			{
 				lexeme.type = vl;
+
+				if (atoi(lexeme.text) > 32768) // проверка константы на соответствие
+					lexeme.type = wl;
 			}
 			else if (prevState == Comparison || prevState == ComplexComparison)
 			{
-				lexeme.type = co;
+				lexeme.type = co;				
 			}
 			else if (prevState == Assignment)
 			{
@@ -205,22 +191,22 @@ void lexemeAnalysis(const char* lines, vector<Lexeme>& result, States table [7][
 
 			result.push_back(lexeme); // Запись лексемы в список
 
-			if(state != Separator)
+			if (state != Separator) // сохранение начала лексемы если непробельный символ
 				start_lex_pos = position;
 			
 		}
-		else if(prevState == Separator && state != Separator)
+		else if(prevState == Separator && state != Separator) // Сохранение начала лексемы в случае обнаружения непробельного символа
 		{		
 			start_lex_pos = position;
 		}
-		// Переход к следующему символу
-		position++;
+		
+		position++; // Переход к следующему символу
 
 	} while (position <= size);
 
 }
 
-bool fileOutput(vector<Lexeme> result, vector<char*> identificators) // вывод в файл
+bool fileOutput(vector<Lexeme> result) // вывод в файл
 {
 	ofstream ofs("output.txt");
 
@@ -241,25 +227,25 @@ bool fileOutput(vector<Lexeme> result, vector<char*> identificators) // выво
 	ofs << result[i] << endl;
 
 	long unsigned int j = 0;
-	while (j < identificators.size()) // выводим идентификаторы в консоль и в выходной файл без пробела в конце
+	while (j < result.size() - 1) // выводим идентификаторы в консоль и в выходной файл без пробела в конце
 	{
-
+		if (result[j].type == id)
 		{
-			cout << identificators[j] << " ";
-			ofs << identificators[j] << " ";
+			cout << result[j].text << " ";
+			ofs << result[j].text << " ";
 		}
 		j++;
 	}
-	/*if (result[j].type == id)
+	if (result[j].type == id)
 	{
 		cout << result[j].text;
 		ofs << result[j].text;
-	}*/
+	}
 	cout << endl;
 	ofs << endl;
 
 	long unsigned int k = 0;
-	while (k < result.size()) // выводим константы в консоль и в выходной файл без пробела в конце
+	while (k < result.size() - 1) // выводим константы в консоль и в выходной файл без пробела в конце
 	{
 		if (result[k].type == vl)
 		{
@@ -268,17 +254,16 @@ bool fileOutput(vector<Lexeme> result, vector<char*> identificators) // выво
 		}
 		k++;
 	}
-	/*if (result[k].type == vl)
+	if (result[k].type == vl)
 	{
 		cout << result[k].text;
 		ofs << result[k].text;
-	}*/
+	}
 
 	ofs.close();
 
 	return true;
 }
-
 
 int main()
 {
@@ -302,7 +287,7 @@ int main()
 
 		ifs.close();
 
-		if (lines[0] == '\0')
+		if (lines[0] == '\0') // прерывание программы в случае, если массив пустой
 			return 0;
 
 		States table[7][9];
@@ -310,79 +295,21 @@ int main()
 		createTable(table); // создаем таблицу состояний автомата
 
 		vector<Lexeme> result; // вектор, в который будем записывать лексемы
-		vector<char*> identificators;
 
-		lexemeAnalysis(lines, result, table, identificators);
+		lexemeAnalysis(lines, result, table);
 
 		delete[] lines;
 
-		//if (!fileOutput(result, identificators)) // вывод в файл и проверка открылся ли файл для вывода
-		//{
-		//	cout << "\nThe file is not open! Something went wrong!\n";
-		//	return -1;
-		//}
-
-		ofstream ofs("output.txt");
-
-		if (!ofs.is_open()) // проверка открылся ли файл для записи
+		if (!fileOutput(result)) // вывод в файл и проверка открылся ли файл для вывода
 		{
 			cout << "\nThe file is not open! Something went wrong!\n";
-			return false;
+			return -1;
 		}
-
-		long unsigned int i = 0;
-		while (i < result.size() - 1) // выводим обработанный текст в консоль и в выходной файл без пробела в конце
-		{
-			cout << result[i] << " ";
-			ofs << result[i] << " ";
-			i++;
-		}
-		cout << result[i] << endl;
-		ofs << result[i] << endl;
-
-		long unsigned int l = 0;
-		while (l < identificators.size()) // выводим идентификаторы в консоль и в выходной файл без пробела в конце
-		{
-
-			{
-				cout << identificators[l] << " ";
-				ofs << identificators[l] << " ";
-			}
-			l++;
-		}
-		/*if (result[j].type == id)
-		{
-			cout << result[j].text;
-			ofs << result[j].text;
-		}*/
-		cout << endl;
-		ofs << endl;
-
-		long unsigned int k = 0;
-		while (k < result.size()) // выводим константы в консоль и в выходной файл без пробела в конце
-		{
-			if (result[k].type == vl)
-			{
-				cout << result[k].text << " ";
-				ofs << result[k].text << " ";
-			}
-			k++;
-		}
-		/*if (result[k].type == vl)
-		{
-			cout << result[k].text;
-			ofs << result[k].text;
-		}*/
-
-		ofs.close();
 
 		for (long unsigned int i = 0; i < result.size(); i++) // очищаем выделенную для текста лексем память
 		{
 			delete[] result[i].text;
 		}
 	}
-	catch (runtime_error)
-	{
-		cout << "oib,rf";
-	}
+	catch (runtime_error) {};
 }

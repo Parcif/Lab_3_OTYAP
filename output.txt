@@ -1,2 +1,3 @@
-do[kw] +[ao] 32e[wl]
-
+doo[id] sdf[id] <>[co] +[ao] 123[vl] while[kw] -[ao] 234[vl] loooop[wl] loop[kw]
+doo sdf 
+123 234 
