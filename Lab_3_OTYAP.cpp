@@ -225,9 +225,9 @@ bool fileOutput(vector<Lexeme> result) // вывод в файл
 	}
 	cout << result[i] << endl;
 	ofs << result[i] << endl;
-
+	
 	long unsigned int j = 0;
-	while (j < result.size() - 1) // выводим идентификаторы в консоль и в выходной файл без пробела в конце
+	while (j < result.size()) // выводим идентификаторы в консоль и в выходной файл
 	{
 		if (result[j].type == id)
 		{
@@ -236,16 +236,11 @@ bool fileOutput(vector<Lexeme> result) // вывод в файл
 		}
 		j++;
 	}
-	if (result[j].type == id)
-	{
-		cout << result[j].text;
-		ofs << result[j].text;
-	}
 	cout << endl;
 	ofs << endl;
 
 	long unsigned int k = 0;
-	while (k < result.size() - 1) // выводим константы в консоль и в выходной файл без пробела в конце
+	while (k < result.size()) // выводим константы в консоль и в выходной файл
 	{
 		if (result[k].type == vl)
 		{
@@ -253,11 +248,6 @@ bool fileOutput(vector<Lexeme> result) // вывод в файл
 			ofs << result[k].text << " ";
 		}
 		k++;
-	}
-	if (result[k].type == vl)
-	{
-		cout << result[k].text;
-		ofs << result[k].text;
 	}
 
 	ofs.close();
